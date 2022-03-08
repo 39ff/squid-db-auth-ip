@@ -9,6 +9,7 @@ $in = fopen("php://stdin", "r");
 $out = fopen('php://stdout','w');
 while (!feof($in)) {
     $line = fgets($in);
+    if(empty($line)){ continue; }
     try {
         $pdo = new PDO(
             $dsn,
