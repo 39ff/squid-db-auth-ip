@@ -1,36 +1,48 @@
 <?php
-$options = getopt(null,[
+$options = getopt("", [
     'dsn:',
     'user:',
     'password:'
 ]);
-$dsn = $options['dsn'];
-$in = fopen("php://stdin", "r");
-$out = fopen('php://stdout','w');
-while (!feof($in)) {
-    $line = fgets($in);
-    if(empty($line)){ continue; }
+if ($options === false) {
+    fwrite(STDOUT, "BH log=\"missing options\"\n");
+    exit();
+}
+$pdo = null;
+try {
+    $pdo = new PDO(
+        $options['dsn'],
+        $options['user'],
+        $options['password'],
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]
+    );
+} catch (PDOException $e) {
+    $message = rawurlencode($e->getMessage());
+    fwrite(STDOUT, "BH log=\"{$message}\"\n");
+    exit();
+}
+while (($line = fgets(STDIN)) !== false) {
+    $line = trim($line);
+    if (empty($line)) {
+        continue;
+    }
+    [$channel_id, $src, $args] = array_pad(explode(" ", $line, 3), 3, "");
     try {
-        $pdo = new PDO(
-            $dsn,
-            $options['user'], $options['password'],
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]
-        );
-        $line = trim($line);
         $stmt = $pdo->prepare('SELECT ip FROM allowed_ips WHERE ip = ?');
-        $execute = $stmt->execute([
-            $line
+        $stmt->execute([
+            $src
         ]);
         $result = $stmt->fetch();
-        if (isset($result['ip']) && strcmp($result['ip'],$line) === 0) {
-            fwrite($out, "OK\n");
+        $stmt->closeCursor();
+        if (isset($result['ip']) && strcmp($result['ip'], $src) === 0) {
+            fwrite(STDOUT, "{$channel_id} OK\n");
         } else {
-            fwrite($out, "ERR\n");
+            fwrite(STDOUT, "{$channel_id} ERR\n");
         }
-    }catch (PDOException $e){
-        fwrite($out,"BH\n");
+    } catch (PDOException $e) {
+        fwrite(STDOUT, "{$channel_id} BH\n");
     }
 }
