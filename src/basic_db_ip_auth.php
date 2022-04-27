@@ -29,7 +29,7 @@ while (($line = fgets(STDIN)) !== false) {
     if (empty($line)) {
         continue;
     }
-    [$channel_id, $src, $args] = array_pad(explode(" ", $line, 3), 3, "");
+    list($channel_id, $src, $args) = array_pad(explode(" ", $line, 3), 3, "");
     try {
         $stmt = $pdo->prepare('SELECT ip FROM allowed_ips WHERE ip = ?');
         $stmt->execute([
