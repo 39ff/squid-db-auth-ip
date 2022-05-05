@@ -5,23 +5,7 @@ $options = getopt("", [
     'password:'
 ]);
 if ($options === false) {
-    fwrite(STDOUT, "BH log=\"missing options\"\n");
-    exit();
-}
-$pdo = null;
-try {
-    $pdo = new PDO(
-        $options['dsn'],
-        $options['user'],
-        $options['password'],
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]
-    );
-} catch (PDOException $e) {
-    $message = rawurlencode($e->getMessage());
-    fwrite(STDOUT, "BH log=\"{$message}\"\n");
+    fwrite(STDOUT, "ERR log=\"missing options\"\n");
     exit();
 }
 while (($line = fgets(STDIN)) !== false) {
@@ -31,7 +15,17 @@ while (($line = fgets(STDIN)) !== false) {
     }
     list($channel_id, $src, $args) = array_pad(explode(" ", $line, 3), 3, "");
     try {
-        $stmt = $pdo->prepare('SELECT ip FROM allowed_ips WHERE ip = ?');
+        $pdo = new PDO(
+            $options['dsn'],
+            $options['user'],
+            $options['password'],
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_PERSISTENT=>true,
+            ]
+        );
+        $stmt = $pdo->prepare('SELECT ip FROM squid_allowed_ips WHERE ip = ?');
         $stmt->execute([
             $src
         ]);
@@ -42,7 +36,11 @@ while (($line = fgets(STDIN)) !== false) {
         } else {
             fwrite(STDOUT, "{$channel_id} ERR\n");
         }
-    } catch (PDOException $e) {
-        fwrite(STDOUT, "{$channel_id} BH\n");
+    } catch (\Exception $e) {
+        //non-recoverable,Defined keywords log= is not working?? so using user=
+        //http://www.squid-cache.org/Versions/v3/3.5/cfgman/external_acl_type.html
+        $message = rawurlencode($src.' '.$e->getMessage());
+        fwrite(STDOUT, "{$channel_id} ERR user=\"{$message}\"\n");
+        exit(1);
     }
 }
