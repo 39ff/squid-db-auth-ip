@@ -22,7 +22,6 @@ while (($line = fgets(STDIN)) !== false) {
             [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_PERSISTENT=>true,
             ]
         );
         $stmt = $pdo->prepare('SELECT ip FROM squid_allowed_ips WHERE ip = ?');
